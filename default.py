@@ -3,8 +3,10 @@
 import sys
 import xbmc, xbmcgui, xbmcplugin
 import urllib2
+import urllib
 
 from bs4 import BeautifulSoup
+import soupselect; soupselect.monkeypatch()
 import re
 import feedparser
 
@@ -41,7 +43,7 @@ def parameters_string_to_dict(parameters):
 def addDirectoryItem(name, isFolder=True, parameters={}):
     ''' Add a list item to the XBMC UI.'''
     li = xbmcgui.ListItem(name)
-    url = sys.argv[0] + '?' + urllib2.urlencode(parameters)
+    url = sys.argv[0] + '?' + urllib.urlencode(parameters)
     return xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=li, isFolder=isFolder)
 
 def addLink(name,url):
@@ -61,14 +63,41 @@ def fetchUrl(url):
     response.close()
     return html
 
-def get_video_url(url):    
+def get_video_url(provider_name, url):    
     #html = fetchUrl('http://www.animedreaming.tv/fairy-tail-episode-134/')
     html = fetchUrl(url)
     soup = BeautifulSoup(html)
     providers = soup.findAll('div', {'class': 'videoembed activeembed'})
     provider_page_url = providers[0].contents[0]['src']
+    video_url = ''
+    if (provider_name == 'sapo'):
+        video_url = sapo_get_video_url(provider_page_url)
 
-    return sapo_get_video_url(provider_page_url)
+    return video_url
+
+def get_video_providers(url):
+    html = fetchUrl(url)
+    soup = BeautifulSoup(html)
+    generic_video_items = soup.findSelect('div.generic-video-item')
+    result = []
+    for item in generic_video_items:
+        ssoup = BeautifulSoup(str(item.contents))
+        video_page = ssoup.findSelect('div.thumb')
+        if (not video_page[0].a):
+            provider_url = url
+            temp = BeautifulSoup(str(video_page[0].contents))
+            span = temp.findAll('span')
+            provider_name = span[1].string
+        else:
+            provider_name = video_page[0].a.center.span.string
+            provider_url = video_page[0].a['href']
+
+        data = {'provider_name': provider_name, 
+            'provider_url': provider_url}
+
+        result.append(data)
+
+    return result
 
 def sapo_get_video_url(url):
     html = fetchUrl(url)
@@ -89,25 +118,34 @@ def show_root_menu():
     for i in d.entries:
         name = i.title
         link = i.link
-        #addDirectoryItem(name, isFolder=True, parameters ={'link': link, 'mode': MODE_FIRST})
-        video_url = get_video_url(link) 
-        if (video_url):
-            addLink(name, video_url)
+        addDirectoryItem(name, isFolder=True, parameters ={'link': link, 'mode': MODE_FIRST})
+        #video_url = get_video_url(link) 
+        #if (video_url):
+        #    addLink(name, video_url)
     xbmcplugin.endOfDirectory(handle=handle, succeeded=True)
     
 def show_first_submenu():
     ''' Show first submenu. '''
     params = parameters_string_to_dict(sys.argv[2])
     link = params.get('link', "")
-    
+    providers = get_video_providers(urllib.unquote(link))
+    for provider in providers:
+        print "processing %s from %s" % (provider['provider_name'], provider['provider_url'])
+        video_url = get_video_url(provider['provider_name'], provider['provider_url'])
+        print video_url
+        if (video_url):
+            addLink("Play from %s" % provider['provider_name'], video_url)
+        #addDirectoryItem(provider['provider_name'], isFolder=True, parameters ={'link': provider['provider_url'], 'mode': MODE_SECOND})
     #addLink()
     xbmcplugin.endOfDirectory(handle=handle, succeeded=True)
 
 def show_second_submenu():
     ''' Show second submenu. '''
-    for i in range(0, 10):
-        name = "%s Item %d" % (SECOND_SUBMENU, i)
-        addDirectoryItem(name, isFolder=False)
+    params = parameters_string_to_dict(sys.argv[2])
+    link = params.get('link', "")
+    video_url = get_video_url(urllib.unquote(link)) 
+    if (video_url):
+        addLink("Play from %s" % name, video_url)
     xbmcplugin.endOfDirectory(handle=handle, succeeded=True)
 
 # parameter values

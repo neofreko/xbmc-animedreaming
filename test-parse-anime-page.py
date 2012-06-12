@@ -1,6 +1,7 @@
 import urllib2
 from bs4 import BeautifulSoup
 import re
+import soupselect; soupselect.monkeypatch()
 
 
 def fetchUrl(url):
@@ -25,4 +26,28 @@ def sapo_get_video_url(url):
 
 	return match[0]
 
-get_video_url()
+def get_video_providers(url):
+	html = fetchUrl(url)
+	soup = BeautifulSoup(html)
+	generic_video_items = soup.findSelect('div.generic-video-item')
+	result = []
+	for item in generic_video_items:
+		ssoup = BeautifulSoup(str(item.contents))
+		video_page = ssoup.findSelect('div.thumb')
+		if (not video_page[0].a):
+			provider_url = url
+			temp = BeautifulSoup(str(video_page[0].contents))
+			span = temp.findAll('span')
+			provider_name = span[1].string
+		else:
+			provider_name = video_page[0].a.center.span.string
+			provider_url = video_page[0].a['href']
+		#print video_page[0]
+		data = {'provider_name': provider_name, 
+			'provider_url': provider_url}
+		print data
+		result.append(data)
+
+	return result
+
+print get_video_providers('http://www.animedreaming.tv/saint-seiya-omega-episode-11/')
