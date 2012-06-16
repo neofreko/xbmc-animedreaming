@@ -63,15 +63,32 @@ def fetchUrl(url):
     response.close()
     return html
 
+'''
+XBMC plays mp4
+'''
 def get_video_url(provider_name, url):    
     #html = fetchUrl('http://www.animedreaming.tv/fairy-tail-episode-134/')
     html = fetchUrl(url)
     soup = BeautifulSoup(html)
-    providers = soup.findAll('div', {'class': 'videoembed activeembed'})
-    provider_page_url = providers[0].contents[0]['src']
+
     video_url = ''
-    if (provider_name == 'sapo'):
-        video_url = sapo_get_video_url(provider_page_url)
+    if provider_name == 'rutube':
+        video_url = rutube_get_video_url(url)
+    else:
+        providers = soup.findAll('div', {'class': 'videoembed activeembed'})
+        provider_page_url = providers[0].contents[0]['src']
+        
+        if (provider_name == 'sapo'):
+            video_url = sapo_get_video_url(provider_page_url)
+
+        #if (provider_name == 'yourupload'):
+        #    video_url = yourupload_get_video_url(provider_page_url)
+
+        if (provider_name == 'uploadc'):
+            video_url = uploadc_get_video_url(provider_page_url)
+
+        if (provider_name == 'mp4upload'):
+            video_url = mp4upload_get_video_url(provider_page_url)
 
     return video_url
 
@@ -102,6 +119,49 @@ def get_video_providers(url):
 def sapo_get_video_url(url):
     html = fetchUrl(url)
     match=re.compile("url:\s+'(http:.*?\.mp4)'").findall(html)
+    if (match):
+        return match[0]
+    else:
+        return ''
+
+def yourupload_get_video_url(url):
+    # http://f12.yourupload.com/stream/cf700038dfd54ec37a89910b0f4e104e
+    html = fetchUrl(url)
+    match=re.compile("(http:.*?yourupload\.com/stream.*)'").findall(html)
+
+    if (match):
+        return match[0]
+    else:
+        return ''
+
+def uploadc_get_video_url(url):
+    #http://www.uploadc.com/embed-0o7mous7l569.html
+    #file=http://www15.uploadc.com:182/d/tigndl5mvsulzrqmbpn3fanql3bs6fhgkigvscwiuawmu2go2c5z447d/135.mp4
+    html = fetchUrl(url)
+    match=re.compile("http:.*?:182/.*?\.mp4").findall(html)
+
+    if (match):
+        return match[0]
+    else:
+        return ''
+
+def mp4upload_get_video_url(url):
+    #http://mp4upload.com/embed-2eq8hcuy3z8s-650x370.html
+    #file=http%3A%2F%2Fwww3.mp4upload.com%2Ffiles%2F3%2F4jmk3grgqhy6le%2Fvideo.mp4
+    html = fetchUrl(url)
+    match=re.compile("http.*?files.*?mp4").findall(html)
+    
+    if (match):
+        return match[0]
+    else:
+        return ''
+
+def rutube_get_video_url(url):
+    #http://www.animedreaming.tv/fairy-tail-episode-135/mirror-145196/
+    #http://bl.rutube.ru/474cf104e9ca7abd1982334977a190ed.iflv
+    html = fetchUrl(url)
+    match=re.compile("file=(http.*?iflv)").findall(html)
+    
     if (match):
         return match[0]
     else:
