@@ -1,5 +1,4 @@
 
-
 import sys
 import xbmc, xbmcgui, xbmcplugin
 import urllib2
@@ -27,6 +26,19 @@ SECOND_SUBMENU = "Second Submenu"
 
 # plugin handle
 handle = int(sys.argv[1])
+
+#patterns
+YOURUPLOAD = re.compile("content.*?(http:.*?\.mp4)")
+SAPO = re.compile("url:\s+'(http:.*?\.mp4)'")
+MP4UPLOAD = re.compile("(http:.*?:182/.*?\.mp4)")
+UPLOADC = re.compile("(http:.*?:182/.*?\.mp4)")
+ENGINE = re.compile("url:\s+'(http.*?mp4.*?)'")
+VIDEOWEED = re.compile("advURL.*?(http.*?file.*?)\"")
+VIDEONEST = re.compile("(http.*?mp4)")
+UPLOAD2 = re.compile("video=(http.*?mp4.*?)\&")
+RUTUBE = re.compile("file=(http.*?iflv)")
+
+VIDEOEMBED = re.compile("div class=\"videoembed activeembed\".*?src=\"(http.*?)\"")
 
 # utility functions
 def parameters_string_to_dict(parameters):
@@ -67,31 +79,51 @@ def fetchUrl(url):
 XBMC plays mp4
 '''
 def get_video_url(provider_name, url):    
-    #html = fetchUrl('http://www.animedreaming.tv/fairy-tail-episode-134/')
     html = fetchUrl(url)
-    soup = BeautifulSoup(html)
-
+    
+    match = False
     video_url = ''
     if provider_name == 'rutube':
-        video_url = rutube_get_video_url(url)
+        match=RUTUBE.search(html)
     else:
-        providers = soup.findAll('div', {'class': 'videoembed activeembed'})
-        provider_page_url = providers[0].contents[0]['src']
-        
-        if (provider_name == 'sapo'):
-            video_url = sapo_get_video_url(provider_page_url)
+        try:
+       
+           provider_page_url = VIDEOEMBED.search(html).group(1)
+           html = fetchUrl(provider_page_url)
+           
+           if (provider_name == 'sapo'):
+              match=SAPO.search(html)
+           elif (provider_name == 'yourupload'):
+              match=YOURUPLOAD.search(html)
+           elif (provider_name == 'uploadc'):
+              match=UPLOADC.search(html)
+           elif (provider_name == 'upload2'):
+              match=UPLOAD2.search(html)
+           elif (provider_name == 'mp4upload'):
+              match=MP4UPLOAD.search(html)
+           #elif (provider_name == 'videoweed'):
+           #  match=VIDEOWEED.search(html)
+           elif (provider_name == 'engine'):
+              match=ENGINE.search(html)
+           elif (provider_name == 'videonest'):
+              match=VIDEONEST.search(html)
+           else:
+             try:
+                print "AD-TV: unknown provider - "+provider_page_url+"\n"+html
+             except:
+                print "AD-TV: unknown provider - "+provider_page_url+"\n"+repr(html)
+             match=VIDEONEST.search(html)
 
-        #if (provider_name == 'yourupload'):
-        #    video_url = yourupload_get_video_url(provider_page_url)
+        except Exception as inst:
+           print "AD-TV: parsing problem - \n"+html, inst
 
-        if (provider_name == 'uploadc'):
-            video_url = uploadc_get_video_url(provider_page_url)
-
-        if (provider_name == 'mp4upload'):
-            video_url = mp4upload_get_video_url(provider_page_url)
+    if(match):
+        video_url = match.group(1)
+        if (provider_name == 'engine'):
+            video_url = urllib.unquote(video_url)
 
     return video_url
-
+    
 def get_video_providers(url):
     html = fetchUrl(url)
     soup = BeautifulSoup(html)
@@ -115,57 +147,6 @@ def get_video_providers(url):
         result.append(data)
 
     return result
-
-def sapo_get_video_url(url):
-    html = fetchUrl(url)
-    match=re.compile("url:\s+'(http:.*?\.mp4)'").findall(html)
-    if (match):
-        return match[0]
-    else:
-        return ''
-
-def yourupload_get_video_url(url):
-    # http://f12.yourupload.com/stream/cf700038dfd54ec37a89910b0f4e104e
-    html = fetchUrl(url)
-    match=re.compile("(http:.*?yourupload\.com/stream.*)'").findall(html)
-
-    if (match):
-        return match[0]
-    else:
-        return ''
-
-def uploadc_get_video_url(url):
-    #http://www.uploadc.com/embed-0o7mous7l569.html
-    #file=http://www15.uploadc.com:182/d/tigndl5mvsulzrqmbpn3fanql3bs6fhgkigvscwiuawmu2go2c5z447d/135.mp4
-    html = fetchUrl(url)
-    match=re.compile("http:.*?:182/.*?\.mp4").findall(html)
-
-    if (match):
-        return match[0]
-    else:
-        return ''
-
-def mp4upload_get_video_url(url):
-    #http://mp4upload.com/embed-2eq8hcuy3z8s-650x370.html
-    #file=http%3A%2F%2Fwww3.mp4upload.com%2Ffiles%2F3%2F4jmk3grgqhy6le%2Fvideo.mp4
-    html = fetchUrl(url)
-    match=re.compile("http.*?files.*?mp4").findall(html)
-    
-    if (match):
-        return match[0]
-    else:
-        return ''
-
-def rutube_get_video_url(url):
-    #http://www.animedreaming.tv/fairy-tail-episode-135/mirror-145196/
-    #http://bl.rutube.ru/474cf104e9ca7abd1982334977a190ed.iflv
-    html = fetchUrl(url)
-    match=re.compile("file=(http.*?iflv)").findall(html)
-    
-    if (match):
-        return match[0]
-    else:
-        return ''
 
 # UI builder functions
 def show_root_menu():
