@@ -15,4 +15,10 @@
     <summary lang="en">Animedreaming.tv for XBMC</summary>
     <description lang="en">List recent Animedreaming.tv anime and provides menu to play anime from</description>
   </extension>
+
+  <extension point="xbmc.addon.repository" name="neofreko Add-on Repository">
+                <info compressed="true">http://github.com/neofreko/xbmc-animedreaming/raw/master/addons.xml</info>
+                <checksum>http://github.com/neofreko/xbmc-animedreaming/raw/master/addons.xml.md5</checksum>
+                <datadir zip="true">http://github.com/neofreko/xbmc-animedreaming/raw/master/</datadir>
+        </extension>
 </addon>
