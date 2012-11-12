@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addons>
 <addon id="plugin.video.animedreaming.tv"
        name="Animedreaming.tv"
        version="0.0.1"
@@ -16,3 +17,4 @@
     <description lang="en">List recent Animedreaming.tv anime and provides menu to play anime from</description>
   </extension>
 </addon>
+</addons>
