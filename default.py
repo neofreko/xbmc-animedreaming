@@ -3,6 +3,8 @@ import sys
 import xbmc, xbmcgui, xbmcplugin
 import urllib2
 import urllib
+import CommonFunctions
+common = CommonFunctions
 
 from bs4 import BeautifulSoup
 import soupselect; soupselect.monkeypatch()
@@ -16,7 +18,8 @@ import feedparser
 # plugin modes
 MODE_FIRST = 10
 MODE_SECOND = 20
-
+MODE_SEARCH = 30
+MODE_RESULT = 40
 # parameter keys
 PARAMETER_KEY_MODE = "mode"
 
@@ -155,6 +158,8 @@ def show_root_menu():
     addDirectoryItem(name=SECOND_SUBMENU, parameters={ PARAMETER_KEY_MODE: MODE_SECOND }, isFolder=True)
     '''
     
+    addDirectoryItem(' - Search - ', isFolder=True, parameters ={'mode': MODE_SEARCH})
+
     d = feedparser.parse('http://www.animedreaming.tv/rss.xml')
     for i in d.entries:
         name = i.title
@@ -189,6 +194,23 @@ def show_second_submenu():
         addLink("Play from %s" % name, video_url)
     xbmcplugin.endOfDirectory(handle=handle, succeeded=True)
 
+def getSearch():
+    query = common.getUserInput('Search', '')
+    if not query:
+        return False
+    html = fetchUrl('http://www.animedreaming.tv/search.php?searchquery='+urllib.quote_plus(query))
+    for link in re.compile('<li.*?href="(http://www.animedreaming.tv/.*?)">(.*?)</a>').findall(html):
+        addDirectoryItem(re.sub('<b>|</b>','*',link[1]), isFolder=True, parameters ={'link': link[0], 'mode': MODE_RESULT})
+    xbmcplugin.endOfDirectory(handle=handle, succeeded=True)
+
+def parseResults():
+    params = parameters_string_to_dict(sys.argv[2])
+    link = params.get('link', "")
+    html = fetchUrl(urllib.unquote(link))
+    for link in re.compile('<li.*?href="(http://www.animedreaming.tv/.*?)".*?>(.*?)&nbsp;<').findall(html):
+        addDirectoryItem(link[1], isFolder=True, parameters ={'link': link[0], 'mode': MODE_FIRST})
+    xbmcplugin.endOfDirectory(handle=handle, succeeded=True)
+
 # parameter values
 params = parameters_string_to_dict(sys.argv[2])
 mode = int(params.get(PARAMETER_KEY_MODE, "0"))
@@ -204,3 +226,7 @@ elif mode == MODE_FIRST:
     ok = show_first_submenu()
 elif mode == MODE_SECOND:
     ok = show_second_submenu()
+elif mode == MODE_SEARCH:
+    ok = getSearch()
+elif mode == MODE_RESULT:
+    ok = parseResults()
