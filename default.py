@@ -5,6 +5,10 @@ import urllib2
 import urllib
 import CommonFunctions
 common = CommonFunctions
+from t0mm0.common.addon import Addon
+from metahandler import metahandlers
+
+addon = Addon('plugin.video.1channel', sys.argv)
 
 from bs4 import BeautifulSoup
 import soupselect; soupselect.monkeypatch()
@@ -55,20 +59,23 @@ def parameters_string_to_dict(parameters):
                 paramDict[paramSplits[0]] = paramSplits[1]
     return paramDict
 
-def addDirectoryItem(name, isFolder=True, parameters={}):
+def addDirectoryItem(name, isFolder=True, parameters={}, listitem = False):
     ''' Add a list item to the XBMC UI.'''
-    li = xbmcgui.ListItem(name)
+    if (listitem):
+        li = listitem
+    else:
+        li = xbmcgui.ListItem(name)
     url = sys.argv[0] + '?' + urllib.urlencode(parameters)
     return xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=li, isFolder=isFolder)
 
 def addLink(name,url):
-        ok=True
-        liz=xbmcgui.ListItem(name)
-        liz.setInfo( type="video",  infoLabels = {
-                'title' : name 
-        })
-        ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=url,listitem=liz)
-        return ok
+    ok=True
+    liz=xbmcgui.ListItem(name)
+    liz.setInfo( type="video",  infoLabels = {
+            'title' : name 
+    })
+    ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=url,listitem=liz)
+    return ok
 
 def fetchUrl(url):
     req = urllib2.Request(url)
@@ -164,7 +171,10 @@ def show_root_menu():
     for i in d.entries:
         name = i.title
         link = i.link
-        addDirectoryItem(name, isFolder=True, parameters ={'link': link, 'mode': MODE_FIRST})
+        meta = create_meta('tvshow', re.sub('episode\s\d+','', name), False, '')
+        listitem = xbmcgui.ListItem(name, iconImage=meta['cover_url'], thumbnailImage=meta['cover_url'])
+        listitem.setInfo('video', meta)
+        addDirectoryItem(name, isFolder=True, parameters ={'link': link, 'mode': MODE_FIRST}, listitem=listitem)
         #video_url = get_video_url(link) 
         #if (video_url):
         #    addLink(name, video_url)
@@ -200,7 +210,12 @@ def getSearch():
         return False
     html = fetchUrl('http://www.animedreaming.tv/search.php?searchquery='+urllib.quote_plus(query))
     for link in re.compile('<li.*?href="(http://www.animedreaming.tv/.*?)">(.*?)</a>').findall(html):
-        addDirectoryItem(re.sub('<b>|</b>','*',link[1]), isFolder=True, parameters ={'link': link[0], 'mode': MODE_RESULT})
+        title = re.sub('<b>|</b>','*',link[1])
+        meta = create_meta('tvshow', title, False, '')
+        listitem = xbmcgui.ListItem(meta['title'], iconImage=meta['cover_url'], thumbnailImage=meta['cover_url'])
+        listitem.setInfo('video', meta)
+        addDirectoryItem(title, isFolder=True, parameters ={'link': link[0], 'mode': MODE_RESULT}, listitem=listitem)
+
     xbmcplugin.endOfDirectory(handle=handle, succeeded=True)
 
 def parseResults():
@@ -210,6 +225,40 @@ def parseResults():
     for link in re.compile('<li.*?href="(http://www.animedreaming.tv/.*?)".*?>(.*?)&nbsp;<').findall(html):
         addDirectoryItem(link[1], isFolder=True, parameters ={'link': link[0], 'mode': MODE_FIRST})
     xbmcplugin.endOfDirectory(handle=handle, succeeded=True)
+
+def create_meta(video_type, title, year, thumb):
+    metaget=metahandlers.MetaData()
+    try:    year = int(year)
+    except: year = 0
+    year = str(year)
+    meta = {'title':title, 'year':year, 'imdb_id':'', 'overlay':''}
+    meta['imdb_id'] = ''
+    #if META_ON:
+    try:
+        if video_type == 'tvshow':
+            meta = metaget.get_meta(video_type, title)
+            if not (meta['imdb_id'] or meta['tvdb_id']):
+                meta = metaget.get_meta(video_type, title, year=year)
+            alt_id = meta['tvdb_id']
+
+            ###Temporary work around. t0mm0.common isn't happy with the episode key being a str
+            meta['episode'] = int(meta['episode'])
+            meta['rating'] = float(meta['rating'])
+
+        else: #movie
+            meta = metaget.get_meta(video_type, title, year=year)
+            alt_id = meta['tmdb_id']
+
+        '''
+        if video_type == 'tvshow' and not USE_POSTERS:
+            meta['cover_url'] = meta['banner_url']
+        if POSTERS_FALLBACK and meta['cover_url'] in ('/images/noposter.jpg',''):
+            meta['cover_url'] = thumb
+        img = meta['cover_url']
+        '''
+    # except: addon.log('Error assigning meta data for %s %s %s' %(video_type, title, year))
+    except: print 'Error assigning meta data for %s %s %s' %(video_type, title, year)
+    return meta
 
 # parameter values
 params = parameters_string_to_dict(sys.argv[2])
