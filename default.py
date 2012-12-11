@@ -174,6 +174,10 @@ def show_root_menu():
         meta = create_meta('tvshow', re.sub('episode\s\d+','', name), False, '')
         listitem = xbmcgui.ListItem(name, iconImage=meta['cover_url'], thumbnailImage=meta['cover_url'])
         listitem.setInfo('video', meta)
+        fanart = ''
+        try: fanart = meta['backdrop_url']
+        except: pass
+        listitem.setProperty('fanart_image', fanart)
         addDirectoryItem(name, isFolder=True, parameters ={'link': link, 'mode': MODE_FIRST}, listitem=listitem)
         #video_url = get_video_url(link) 
         #if (video_url):
@@ -214,6 +218,10 @@ def getSearch():
         meta = create_meta('tvshow', title, False, '')
         listitem = xbmcgui.ListItem(meta['title'], iconImage=meta['cover_url'], thumbnailImage=meta['cover_url'])
         listitem.setInfo('video', meta)
+        fanart = ''
+        try: fanart = meta['backdrop_url']
+        except: pass
+        listitem.setProperty('fanart_image', fanart)
         addDirectoryItem(title, isFolder=True, parameters ={'link': link[0], 'mode': MODE_RESULT}, listitem=listitem)
 
     xbmcplugin.endOfDirectory(handle=handle, succeeded=True)
